@@ -1,0 +1,6 @@
+@sentinel_HostAddress = http://localhost:5222
+
+GET {{sentinel_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
