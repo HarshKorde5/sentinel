@@ -1,4 +1,5 @@
 using Sentinel.Data;
+using Sentinel.Middleware;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,6 +16,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseAuthorization();
+app.UseMiddleware<ApiKeyMiddleware>();
 app.MapControllers();
 
 using (var scope = app.Services.CreateScope())
