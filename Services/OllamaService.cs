@@ -126,14 +126,20 @@ public class OllamaService : IOllamaService
 
             var root = doc.RootElement;
 
-            var text = root.GetProperty("response").GetString() ?? "";
-            var inputTokens = root.GetProperty("prompt_eval_count").GetInt32();
-            var outputTokens = root.GetProperty("eval_count").GetInt32();
+            if (!root.TryGetProperty("response", out var responseEl))
+            {
+                _logger.LogWarning("Model {Model} response missing 'response' field. Raw JSON: {Json}", modelName, responseJson);
+                return Fail(SentinelConstants.ErrorCodes.InvalidResponse, $"Model {modelName} response missing expected fields");
+            }
+
+            var inputTokens = root.TryGetProperty("prompt_eval_count", out var inputEl) ? inputEl.GetInt32() : 0;
+
+            var outputTokens = root.TryGetProperty("eval_count", out var outputEl) ? outputEl.GetInt32() : 0;
 
             return new OllamaResult
             {
                 Success = true,
-                Text = text,
+                Text = responseEl.GetString() ?? "",
                 InputTokens = inputTokens,
                 OutputTokens = outputTokens
             };

@@ -52,6 +52,16 @@ public class AskController : ControllerBase
             });
         }
 
+        //validate prompt for missing and empty fields
+        if (string.IsNullOrWhiteSpace(request.Prompt))
+        {
+            return BadRequest(new
+            {
+                error = "Bad Request",
+                message = "Prompt is required and cannot be empty"
+            });
+        }
+
         var stopwatch = Stopwatch.StartNew();
         var endUserId = request.EndUserId ?? "anonymous";
 
