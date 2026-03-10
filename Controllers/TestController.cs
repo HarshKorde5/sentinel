@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Sentinel.Models;
 using Sentinel.Common;
 using Sentinel.Services;
+using System.Diagnostics;
 
 namespace Sentinel.Controllers;
 
@@ -25,8 +26,10 @@ public class TestController : ControllerBase
             return Unauthorized(new { error = "No product context found" });
         }
 
-        var result = await _ollama.AskAsync(request.Prompt, product, ct);
+        var stopwatch = Stopwatch.StartNew();
 
+        var result = await _ollama.AskAsync(request.Prompt, product, ct);
+        stopwatch.Stop();
         if (!result.Success)
         {
             return StatusCode(503, new
@@ -43,7 +46,8 @@ public class TestController : ControllerBase
             usedFallback = result.UsedFallback,
             response = result.Text,
             inputTokens = result.InputTokens,
-            outputTokens = result.OutputTokens
+            outputTokens = result.OutputTokens,
+            latencyMs = stopwatch.ElapsedMilliseconds
         });
     }
 }
