@@ -1,30 +1,31 @@
 using Microsoft.AspNetCore.Mvc;
 using Sentinel.Models;
+using Sentinel.Common;
 using Sentinel.Services;
+
 namespace Sentinel.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-
 public class TestController : ControllerBase
 {
-    private readonly OllamaService _ollama;
-    public TestController(OllamaService ollama)
+    private readonly IOllamaService _ollama;
+    public TestController(IOllamaService ollama)
     {
         _ollama = ollama;
     }
 
     [HttpPost]
-    public async Task<IActionResult> Test([FromBody] TestRequest request)
+    public async Task<IActionResult> Test([FromBody] TestRequest request, CancellationToken ct)
     {
-        var product = HttpContext.Items["Product"] as Product;
+        var product = HttpContext.Items[SentinelConstants.HttpContextKeys.Product] as Product;
 
         if (product == null)
         {
             return Unauthorized(new { error = "No product context found" });
         }
 
-        var result = await _ollama.AskAsync(request.Prompt, product);
+        var result = await _ollama.AskAsync(request.Prompt, product, ct);
 
         if (!result.Success)
         {

@@ -23,40 +23,7 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Product>()
-            .HasOne(p => p.PrimaryModel)
-            .WithMany(m => m.PrimaryForProducts)
-            .HasForeignKey(p => p.PrimaryModelId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        modelBuilder.Entity<Product>()
-            .HasOne(p => p.FallbackModel)
-            .WithMany(m => m.FallbackForProducts)
-            .HasForeignKey(p => p.FallbackModelId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-
-        modelBuilder.Entity<ApiKey>()
-            .HasOne(a => a.Product)
-            .WithOne(p => p.ApiKey)
-            .HasForeignKey<ApiKey>(a => a.ProductId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-
-        modelBuilder.Entity<RateLimitRule>()
-            .HasOne(r => r.Product)
-            .WithOne( p => p.RateLimitRule)
-            .HasForeignKey<RateLimitRule>(r => r.ProductId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<User>()
-            .HasIndex(u => u.Email)
-            .IsUnique();
-
-        modelBuilder.Entity<CacheEntry>()
-            .HasIndex(c => new {c.ProductId, c.PromptHash})
-            .IsUnique();
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }
-
 
 }

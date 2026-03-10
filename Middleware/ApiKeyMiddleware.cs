@@ -1,15 +1,12 @@
 using Microsoft.EntityFrameworkCore;
-
+using Sentinel.Common;
 using Sentinel.Data;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace Sentinel.Middleware;
 
 public class ApiKeyMiddleware
 {
     private readonly RequestDelegate _next;
-
     private readonly ILogger<ApiKeyMiddleware> _logger;
 
     public ApiKeyMiddleware(RequestDelegate next, ILogger<ApiKeyMiddleware> logger)
@@ -22,26 +19,26 @@ public class ApiKeyMiddleware
     {
         var path = context.Request.Path.Value ?? "";
 
-        if (path.StartsWith("/dashboard") || path == "/" || path.StartsWith("/health"))
+        if (ShouldSkip(path))
         {
             await _next(context);
             return;
         }
 
-        if (!context.Request.Headers.TryGetValue("X-API-Key", out var rawKey) || string.IsNullOrWhiteSpace(rawKey))
+        if (!context.Request.Headers.TryGetValue(SentinelConstants.Headers.ApiKey, out var rawKey) || string.IsNullOrWhiteSpace(rawKey))
         {
-            _logger.LogWarning("Request reject - missing X-Api-Key header. Path: {path}", path);
+            _logger.LogWarning("Request reject - missing {header} header. Path: {path}", SentinelConstants.Headers.ApiKey, path);
             context.Response.StatusCode = 401;
             await context.Response.WriteAsJsonAsync(new
             {
                 error = "Unauthorized",
-                message = "Missing X-Api-Key header"
+                message = $"Missing {SentinelConstants.Headers.ApiKey} header"
             });
 
             return;
         }
 
-        var keyHash = HashApiKey(rawKey!);
+        var keyHash = ApiKeyHasher.Hash(rawKey!);
 
         Models.ApiKey? apiKey = null;
 
@@ -54,11 +51,11 @@ public class ApiKeyMiddleware
                     .ThenInclude(p => p.FallbackModel)
                 .Include(a => a.Product)
                     .ThenInclude(p => p.RateLimitRule)
-                .FirstOrDefaultAsync(a => a.KeyHash == keyHash && a.IsActive);
+                .FirstOrDefaultAsync(a => a.KeyHash == keyHash && a.IsActive, context.RequestAborted);
         }
         catch (Exception ex)
         {
-            _logger.LogError("Database unavailable during ApiKey lookup : {msg}", ex.Message);
+            _logger.LogError("Database unavailable during ApiKey lookup : {Message}", ex.Message);
             context.Response.StatusCode = 503;
             await context.Response.WriteAsJsonAsync(new
             {
@@ -71,7 +68,7 @@ public class ApiKeyMiddleware
 
         if (apiKey == null)
         {
-            _logger.LogWarning("Request rejected - invalid or inactive key. Hash: {hash}", keyHash[..8] + "...");
+            _logger.LogWarning("Request rejected - invalid or inactive ke hash prefix: {Hash}", keyHash[..8] + "...");
             await context.Response.WriteAsJsonAsync(new
             {
                 error = "Unauthorized",
@@ -82,18 +79,14 @@ public class ApiKeyMiddleware
         }
 
 
-        context.Items["Product"] = apiKey.Product;
-        context.Items["ProductId"] = apiKey.Product.Id;
+        context.Items[SentinelConstants.HttpContextKeys.Product] = apiKey.Product;
+        context.Items[SentinelConstants.HttpContextKeys.ProductId] = apiKey.Product.Id;
 
-        _logger.LogInformation("Authenticated request for product : {name}", apiKey.Product.Name);
+        _logger.LogInformation("Authenticated request for product {ProductName} (Id: {ProductId})", apiKey.Product.Name, apiKey.Product.Id);
 
         await _next(context);
 
     }
 
-    public static string HashApiKey(string rawKey)
-    {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(rawKey));
-        return Convert.ToHexString(bytes).ToLower();
-    }
+    private static bool ShouldSkip(string path) => SentinelConstants.SkippedPaths.Prefixes.Any(prefix => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
 }
