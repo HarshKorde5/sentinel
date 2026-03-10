@@ -1,4 +1,5 @@
 using Sentinel.Data;
+using Sentinel.Services;
 using Sentinel.Middleware;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+builder.Services.AddHttpClient<OllamaService>();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
