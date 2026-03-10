@@ -14,7 +14,7 @@ public static class ServiceExtensions
     {
 
         //options
-        
+
         services.Configure<OllamaOptions>(config.GetSection(OllamaOptions.Section));
 
         services.Configure<RedisOptions>(config.GetSection(RedisOptions.Section));
@@ -24,13 +24,13 @@ public static class ServiceExtensions
 
 
         //postgresql
-        services.AddDbContext<AppDbContext>(options =>options.UseNpgsql(config.GetConnectionString("Default")));
+        services.AddDbContext<AppDbContext>(options => options.UseNpgsql(config.GetConnectionString("Default")));
 
 
         //redis : Singleton because one connection will be shared across all requests
         var redisConn = config["Redis:ConnectionString"] ?? "localhost:6379";
         services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConn));
-            
+
 
         //Application services
         services.AddHttpClient<IOllamaService, OllamaService>();
@@ -38,6 +38,7 @@ public static class ServiceExtensions
         //scoped means new instance per request because AppDbContext is scoped
         services.AddScoped<ICacheService, CacheService>();
         services.AddScoped<IRateLimiter, RateLimiter>();
+        services.AddScoped<IErrorLogService, ErrorLogService>();
 
         return services;
     }
